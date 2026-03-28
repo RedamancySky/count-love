@@ -1,8 +1,55 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  color-scheme: light;
+  --background: #fff8fb;
+  --foreground: #0f172a;
+
+  --surface-1: #ffffff;
+  --surface-2: #fff1f7;
+  --surface-3: rgba(255, 255, 255, 0.9);
+
+  --text-primary: #0f172a;
+  --text-secondary: #334155;
+  --text-muted: #64748b;
+
+  --border-soft: #fecdd3;
+  --border-default: #cbd5e1;
+
+  --accent: #e11d48;
+  --accent-strong: #be123c;
+
+  --gradient-start: #fff1f2;
+  --gradient-end: #ffe4e6;
+
+  --input-bg: #ffffff;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    color-scheme: dark;
+    --background: #0b1120;
+    --foreground: #e2e8f0;
+
+    --surface-1: #111827;
+    --surface-2: #1f2937;
+    --surface-3: rgba(17, 24, 39, 0.9);
+
+    --text-primary: #f8fafc;
+    --text-secondary: #cbd5e1;
+    --text-muted: #94a3b8;
+
+    --border-soft: #334155;
+    --border-default: #475569;
+
+    --accent: #fb7185;
+    --accent-strong: #f43f5e;
+
+    --gradient-start: #0b1120;
+    --gradient-end: #1f2937;
+
+    --input-bg: #0f172a;
+  }
 }
 
 @theme inline {
@@ -10,17 +57,90 @@
   --color-foreground: var(--foreground);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
-
 body {
   background: var(--background);
   color: var(--foreground);
   font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+}
+
+.text-slate-900 {
+  color: var(--text-primary) !important;
+}
+
+.text-slate-700,
+.text-slate-600 {
+  color: var(--text-secondary) !important;
+}
+
+.text-slate-500 {
+  color: var(--text-muted) !important;
+}
+
+.text-rose-600 {
+  color: var(--accent) !important;
+}
+
+.bg-white {
+  background-color: var(--surface-1) !important;
+}
+
+.bg-white\/90 {
+  background-color: var(--surface-3) !important;
+}
+
+.bg-slate-50,
+.bg-rose-50 {
+  background-color: var(--surface-2) !important;
+}
+
+.bg-rose-600 {
+  background-color: var(--accent) !important;
+}
+
+.border-slate-200,
+.border-slate-300 {
+  border-color: var(--border-default) !important;
+}
+
+.border-rose-100,
+.border-rose-300 {
+  border-color: var(--border-soft) !important;
+}
+
+.border-rose-600 {
+  border-color: var(--accent) !important;
+}
+
+.from-rose-50,
+.from-amber-50 {
+  --tw-gradient-from: var(--gradient-start) var(--tw-gradient-from-position) !important;
+  --tw-gradient-to: rgb(255 255 255 / 0) var(--tw-gradient-to-position) !important;
+  --tw-gradient-stops: var(--tw-gradient-via-stops, var(--tw-gradient-from), var(--tw-gradient-to)) !important;
+}
+
+.to-pink-100,
+.to-rose-100 {
+  --tw-gradient-to: var(--gradient-end) var(--tw-gradient-to-position) !important;
+}
+
+input[type="text"],
+input[type="email"],
+input[type="password"],
+input[type="date"],
+textarea {
+  background-color: var(--input-bg);
+  color: var(--text-primary);
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: var(--text-muted);
+}
+
+input:focus,
+textarea:focus {
+  outline: none;
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 35%, transparent);
 }
 
 @keyframes pingSlow {

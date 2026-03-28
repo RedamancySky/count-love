@@ -8,8 +8,6 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
 }
 
 @media (prefers-color-scheme: dark) {
@@ -22,5 +20,64 @@
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+}
+
+@keyframes pingSlow {
+  0% {
+    transform: scale(0.9);
+    opacity: 0.7;
+  }
+  70% {
+    transform: scale(1.15);
+    opacity: 0;
+  }
+  100% {
+    transform: scale(1.15);
+    opacity: 0;
+  }
+}
+
+.animate-ping-slow {
+  animation: pingSlow 2.2s ease-out infinite;
+}
+
+@keyframes confettiFloat {
+  0% {
+    transform: translateY(28px) scale(0.9);
+    opacity: 0;
+  }
+  20% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(-120px) scale(1.2);
+    opacity: 0;
+  }
+}
+
+.confetti-dot {
+  position: absolute;
+  bottom: -20px;
+  width: 10px;
+  height: 10px;
+  border-radius: 9999px;
+  animation: confettiFloat 2.8s linear infinite;
+}
+
+.confetti-a {
+  left: 20%;
+  background: #fb7185;
+}
+
+.confetti-b {
+  left: 50%;
+  background: #f97316;
+  animation-delay: 0.4s;
+}
+
+.confetti-c {
+  left: 75%;
+  background: #facc15;
+  animation-delay: 0.8s;
 }

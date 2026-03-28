@@ -278,3 +278,23 @@ export const config = {
 - [ ] Accessibility: form labels, focus states, error announcements
 - [ ] Rate limiting hoạt động
 - [ ] Không có secret/key lộ trong code
+
+---
+
+## Implementation Status (feature/issue-1, 2026-03-28)
+
+Delivered in current branch:
+
+- Register/login/verify/resend-verify/forgot/reset flows with validation and inline error wiring.
+- OAuth simulation endpoints for Google/Facebook with account merge by email.
+- Rate limiting lock after 5 failed attempts (15 minutes).
+- Onboarding step controller (6 steps) including profile avatar upload, partner connect with invite code + QR payload, start-date preview, theme live preview, and completion CTA.
+- Couple room create/join/status endpoints with 24h invite expiry.
+- Middleware guards for auth and onboarding completion.
+- Unit/integration coverage in local test harness.
+
+Known scaffold constraint:
+
+- Auth persistence is in-memory (not yet Prisma/Postgres-backed).
+- OAuth is simulated endpoint flow for local-first verification.
+

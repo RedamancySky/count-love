@@ -529,3 +529,36 @@ CREATE INDEX idx_events_couple_date ON events(couple_id, date ASC);
 -- Notifications chưa đọc
 CREATE INDEX idx_notifications_user_unread ON notifications(user_id, is_read, created_at DESC);
 ```
+
+---
+
+## Issue-001 Local Auth Data Model (In-memory Scaffold)
+
+For local-first implementation in `feature/issue-1`, auth/onboarding state is persisted in-memory (`lib/auth/store.js`) with these collections:
+
+- `users` (`Map<userId, user>`)
+  - `id`, `name`, `email`, `passwordHash?`, `emailVerified?`
+  - `failedAttempts`, `lockUntil`
+  - `onboardingStep`, `onboardingCompleted`
+  - `coupleId?`, `nickname?`, `birthDate?`, `bio?`, `avatar?`
+  - `oauthProviders[]`
+- `usersByEmail` (`Map<email, userId>`)
+- `oauthAccounts` (`Map<provider:providerAccountId, userId>`)
+- `verifyTokens` (`Map<token, { userId, expiresAt, used }>`)
+- `resetTokens` (`Map<token, { userId, expiresAt, used }>`)
+- `couplesById` (`Map<coupleId, couple>`)
+- `couplesByCode` (`Map<6-char-code, coupleId>`)
+- `sessionsByToken` (`Map<sessionToken, { userId, expiresAt }>`)
+
+### Couple room contract
+
+- Room code is uppercase alphanumeric, fixed length 6.
+- Room invite expires in 24h.
+- `qrCodePayload` format: `countlove://couple/join?code=ABC123`.
+
+### Security rules implemented
+
+- Email/password login blocked until email is verified.
+- Account lock after 5 consecutive wrong passwords (15 minutes).
+- Password reset token expires in 1 hour and is single-use.
+

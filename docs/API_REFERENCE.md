@@ -408,3 +408,49 @@ Lấy tất cả achievements (đã và chưa unlock).
 - `409` Conflict
 - `429` Too Many Requests
 - `500` Internal Server Error
+
+---
+
+## Issue-001 Auth/Onboarding (Implemented in `feature/issue-1`)
+
+The current implementation uses an in-memory auth service for local development and tests.
+
+### Endpoints added/updated
+
+- `POST /auth/register`
+  - Register email/password account.
+  - Returns debug verify token in local scaffold.
+- `POST /auth/resend-verify`
+  - Re-issue verify token when email is not verified.
+- `GET /auth/verify-email?token=...`
+  - Verify email token (24h TTL, single-use).
+- `POST /auth/login`
+  - Email/password sign-in.
+  - Rejects unverified email.
+  - Locks account for 15 minutes after 5 consecutive wrong passwords.
+  - Supports `rememberMe` (30 days).
+- `POST /auth/oauth`
+  - OAuth simulation (`google`, `facebook`) for local scaffold.
+  - Auto-merges with existing email/password account when email matches.
+- `POST /auth/forgot-password`
+  - Issues reset token (1h TTL).
+- `POST /auth/reset-password`
+  - Single-use reset token.
+- `POST /auth/couple/create`
+  - Creates 6-character invite code + QR payload.
+  - Invite expires in 24 hours.
+- `POST /auth/couple/join`
+  - Join with 6-character code or `invitePayload`.
+- `GET /auth/couple/status`
+  - Poll room status (waiting/connected).
+- `PATCH /auth/onboarding`
+  - Saves onboarding progress (steps 1-6).
+
+### Auth/session behavior
+
+- Session cookie: `countlove_session` (HttpOnly).
+- Onboarding status cookie: `countlove_onboarding_completed` (HttpOnly).
+- Middleware redirects:
+  - Unauthenticated users to `/login`.
+  - Authenticated but incomplete onboarding users to `/onboarding` before protected pages.
+

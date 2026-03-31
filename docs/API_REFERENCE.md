@@ -454,3 +454,63 @@ The current implementation uses an in-memory auth service for local development 
   - Unauthenticated users to `/login`.
   - Authenticated but incomplete onboarding users to `/onboarding` before protected pages.
 
+---
+
+## Supabase Auth Migration (March 28, 2026)
+
+Auth UI is now connected to Supabase Auth directly (`@supabase/supabase-js` + `@supabase/ssr`).
+
+### Active auth flows
+
+- Email/password sign-up: `supabase.auth.signUp`
+- Email/password sign-in: `supabase.auth.signInWithPassword`
+- OAuth sign-in (Google/Facebook): `supabase.auth.signInWithOAuth`
+- Resend verify email: `supabase.auth.resend({ type: "signup" })`
+- Forgot password: `supabase.auth.resetPasswordForEmail`
+- Reset password: `supabase.auth.updateUser({ password })`
+
+### Session handling
+
+- Supabase session cookies are handled by SSR middleware in `middleware.ts`.
+- Protected routes:
+  - `/dashboard/*`
+  - `/album/*`
+  - `/diary/*`
+  - `/chat/*`
+  - `/calendar/*`
+  - `/games/*`
+  - `/settings/*`
+
+### Utility routes
+
+- `GET /api/health/supabase`
+  - Verifies Supabase env wiring and optional admin check when `SUPABASE_SERVICE_ROLE_KEY` is configured.
+
+### Supabase-backed onboarding endpoints
+
+- `POST /api/auth/couple/create`
+  - Creates a real `couples` row in Supabase with 6-char invite code.
+- `POST /api/auth/couple/join`
+  - Joins existing couple by code/payload and activates the room.
+- `GET /api/auth/couple/status`
+  - Reads partner-join status from Supabase.
+- `PATCH /api/auth/onboarding`
+  - Persists onboarding profile/couple settings into Supabase tables.
+
+### Supabase-backed auth endpoints
+
+- `POST /api/auth/register`
+  - Uses Supabase `signUp`.
+- `POST /api/auth/login`
+  - Uses Supabase `signInWithPassword`.
+- `POST /api/auth/forgot-password`
+  - Uses Supabase `resetPasswordForEmail`.
+- `POST /api/auth/reset-password`
+  - Uses Supabase `updateUser({ password })` with recovery session.
+- `GET /api/auth/verify-email`
+  - Uses Supabase `verifyOtp` with `token_hash` + `type`.
+- `POST /api/auth/resend-verify`
+  - Uses Supabase `resend({ type: "signup" })`.
+- `POST /api/auth/oauth`
+  - Returns OAuth provider URL from Supabase (`skipBrowserRedirect: true`).
+

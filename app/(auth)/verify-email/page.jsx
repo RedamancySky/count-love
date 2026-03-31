@@ -1,59 +1,73 @@
-"use client";
+﻿"use client";
 
 import Link from "next/link";
-import { Suspense, useEffect, useState } from "react";
-import { useSearchParams } from "next/navigation";
+import { useMemo, useState } from "react";
+import { createClient } from "@/lib/supabase/client";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { useLanguage } from "@/components/language-provider";
 import { AuthShell, InlineError } from "../_components";
 
-function VerifyEmailContent() {
-  const token = useSearchParams().get("token") ?? "";
-  const [status, setStatus] = useState(token ? "loading" : "error");
-  const [message, setMessage] = useState(token ? "Verifying email..." : "Missing verify token.");
+export default function VerifyEmailPage() {
+  const { lang } = useLanguage();
+  const copy =
+    lang === "vi"
+      ? {
+          title: "Xác minh email",
+          subtitle: "Bảo mật tài khoản",
+          goLogin: "Đi tới đăng nhập",
+          note: "Kiểm tra hộp thư để xác minh email. Nếu chưa nhận được, bạn có thể gửi lại.",
+          resendField: "Email để gửi lại xác minh",
+          sending: "Đang gửi...",
+          resend: "Gửi lại email xác minh",
+          resent: "Đã gửi lại email xác minh.",
+          connectError: "Không thể kết nối server.",
+        }
+      : {
+          title: "Verify email",
+          subtitle: "Account security",
+          goLogin: "Go to sign in",
+          note: "Check your inbox to verify your email. If you did not receive it, resend below.",
+          resendField: "Email for resend",
+          sending: "Sending...",
+          resend: "Resend verification email",
+          resent: "Verification email has been resent.",
+          connectError: "Cannot connect to server.",
+        };
+
+  const [status, setStatus] = useState("idle");
+  const [message, setMessage] = useState(copy.note);
   const [email, setEmail] = useState("");
   const [resendError, setResendError] = useState("");
-  const [resendMessage, setResendMessage] = useState("");
-  const [resendToken, setResendToken] = useState("");
   const [loading, setLoading] = useState(false);
-
-  useEffect(() => {
-    if (!token) return;
-
-    fetch(`/api/auth/verify-email?token=${encodeURIComponent(token)}`)
-      .then(async (res) => {
-        const data = await res.json();
-        if (!res.ok) throw new Error(data?.error?.message ?? "Verify failed");
-        setStatus("success");
-        setMessage("Email verified. You can login now.");
-      })
-      .catch((error) => {
-        setStatus("error");
-        setMessage(error.message);
-      });
-  }, [token]);
+  const supabase = useMemo(() => createClient(), []);
 
   async function resendVerifyLink(e) {
     e.preventDefault();
     setResendError("");
-    setResendMessage("");
-    setResendToken("");
+    setStatus("idle");
+    setMessage("");
     setLoading(true);
 
     try {
-      const response = await fetch("/api/auth/resend-verify", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email }),
+      const { error } = await supabase.auth.resend({
+        type: "signup",
+        email,
+        options: {
+          emailRedirectTo: `${window.location.origin}/auth/callback?next=/dashboard`,
+        },
       });
-      const data = await response.json();
 
-      if (!response.ok) {
-        setResendError(data?.error?.message ?? "Cannot resend verify link.");
+      if (error) {
+        setResendError(error.message ?? "Cannot resend verify link.");
       } else {
-        setResendMessage(data?.message ?? "Verification link sent.");
-        setResendToken(data?.debug?.verifyToken ?? "");
+        setStatus("success");
+        setMessage(copy.resent);
       }
     } catch {
-      setResendError("Khong the ket noi server.");
+      setResendError(copy.connectError);
     } finally {
       setLoading(false);
     }
@@ -61,43 +75,30 @@ function VerifyEmailContent() {
 
   return (
     <AuthShell
-      title="Verify email"
-      subtitle="Account security"
-      footer={<Link href="/login" className="text-rose-600">Go to login</Link>}
+      title={copy.title}
+      subtitle={copy.subtitle}
+      footer={<Link href="/login" className="text-primary">{copy.goLogin}</Link>}
     >
-      <p className={status === "success" ? "text-emerald-700" : status === "error" ? "text-red-600" : "text-slate-600"}>{message}</p>
+      <Alert>
+        <AlertDescription>{message}</AlertDescription>
+      </Alert>
 
-      {status === "error" ? (
-        <form className="mt-4 space-y-3" onSubmit={resendVerifyLink} noValidate>
-          <label className="block text-sm text-slate-700">
-            Email to resend verification
-            <input
-              type="email"
-              className="mt-1 h-10 w-full rounded-lg border border-slate-300 px-3"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-            />
-          </label>
-          <button className="h-10 w-full rounded-lg bg-rose-600 text-white disabled:opacity-60" disabled={loading} type="submit">
-            {loading ? "Sending..." : "Resend verify link"}
-          </button>
-          <InlineError text={resendError} />
-          {resendMessage ? <p className="text-sm text-emerald-700">{resendMessage}</p> : null}
-          {resendToken ? (
-            <Link className="text-sm text-rose-600 underline" href={`/verify-email?token=${encodeURIComponent(resendToken)}`}>
-              Open new verify link (debug)
-            </Link>
-          ) : null}
-        </form>
+      <form className="mt-4 space-y-3" onSubmit={resendVerifyLink} noValidate>
+        <Label>
+          {copy.resendField}
+          <Input type="email" className="mt-1" value={email} onChange={(e) => setEmail(e.target.value)} />
+        </Label>
+        <Button className="w-full" disabled={loading} type="submit">
+          {loading ? copy.sending : copy.resend}
+        </Button>
+        <InlineError text={resendError} />
+      </form>
+
+      {status === "success" ? (
+        <Alert className="mt-3">
+          <AlertDescription>{message}</AlertDescription>
+        </Alert>
       ) : null}
     </AuthShell>
-  );
-}
-
-export default function VerifyEmailPage() {
-  return (
-    <Suspense fallback={<AuthShell title="Verify email" subtitle="Loading..." />}>
-      <VerifyEmailContent />
-    </Suspense>
   );
 }

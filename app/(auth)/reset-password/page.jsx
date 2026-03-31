@@ -1,16 +1,72 @@
-"use client";
+﻿"use client";
 
 import Link from "next/link";
-import { Suspense, useState } from "react";
-import { useSearchParams } from "next/navigation";
+import { useEffect, useMemo, useState } from "react";
+import { createClient } from "@/lib/supabase/client";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { useLanguage } from "@/components/language-provider";
 import { AuthShell, InlineError } from "../_components";
 
-function ResetPasswordForm() {
-  const token = useSearchParams().get("token") ?? "";
+export default function ResetPasswordPage() {
+  const { lang } = useLanguage();
+  const copy =
+    lang === "vi"
+      ? {
+          title: "Đặt lại mật khẩu",
+          subtitle: "Liên kết này chỉ dùng được một lần",
+          back: "Quay lại đăng nhập",
+          newPassword: "Mật khẩu mới",
+          confirmPassword: "Xác nhận mật khẩu",
+          saving: "Đang lưu...",
+          save: "Lưu mật khẩu",
+          mismatch: "Mật khẩu xác nhận không khớp.",
+          invalidLink: "Liên kết đặt lại mật khẩu không hợp lệ hoặc đã hết hạn. Vui lòng yêu cầu liên kết mới.",
+          success: "Đặt lại mật khẩu thành công. Bạn có thể đăng nhập lại.",
+          connectError: "Không thể kết nối server.",
+        }
+      : {
+          title: "Reset password",
+          subtitle: "This link can be used once",
+          back: "Back to sign in",
+          newPassword: "New password",
+          confirmPassword: "Confirm password",
+          saving: "Saving...",
+          save: "Save password",
+          mismatch: "Confirm password does not match.",
+          invalidLink: "This reset link is invalid or expired. Please request a new one.",
+          success: "Password reset successful. You can sign in now.",
+          connectError: "Cannot connect to server.",
+        };
+
+  const invalidLinkText = copy.invalidLink;
   const [form, setForm] = useState({ password: "", confirmPassword: "" });
   const [errors, setErrors] = useState({});
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
+  const [ready, setReady] = useState(false);
+  const supabase = useMemo(() => createClient(), []);
+
+  useEffect(() => {
+    let active = true;
+
+    async function bootstrap() {
+      const { data } = await supabase.auth.getSession();
+      if (!active) return;
+      if (data.session) {
+        setReady(true);
+        return;
+      }
+      setErrors({ form: invalidLinkText });
+    }
+
+    bootstrap();
+    return () => {
+      active = false;
+    };
+  }, [supabase, invalidLinkText]);
 
   async function onSubmit(e) {
     e.preventDefault();
@@ -19,20 +75,19 @@ function ResetPasswordForm() {
     setLoading(true);
 
     try {
-      const response = await fetch("/api/auth/reset-password", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ token, ...form }),
-      });
+      if (form.password !== form.confirmPassword) {
+        setErrors({ confirmPassword: copy.mismatch });
+        return;
+      }
 
-      const data = await response.json();
-      if (!response.ok) {
-        setErrors(data?.error?.details ?? { form: data?.error?.message ?? "Unexpected error." });
+      const { error } = await supabase.auth.updateUser({ password: form.password });
+      if (error) {
+        setErrors({ form: error.message ?? "Unexpected error." });
       } else {
-        setMessage("Password reset success. You can login now.");
+        setMessage(copy.success);
       }
     } catch {
-      setErrors({ form: "Khong the ket noi server." });
+      setErrors({ form: copy.connectError });
     } finally {
       setLoading(false);
     }
@@ -40,50 +95,46 @@ function ResetPasswordForm() {
 
   return (
     <AuthShell
-      title="Reset password"
-      subtitle="This link can be used once"
-      footer={<span><Link href="/login" className="text-rose-600">Back to login</Link></span>}
+      title={copy.title}
+      subtitle={copy.subtitle}
+      footer={<span><Link href="/login" className="text-primary">{copy.back}</Link></span>}
     >
       <form onSubmit={onSubmit} className="space-y-3" noValidate>
-        <label className="block text-sm text-slate-700">
-          New password
-          <input
-            className="mt-1 h-10 w-full rounded-lg border border-slate-300 px-3"
+        <Label>
+          {copy.newPassword}
+          <Input
+            className="mt-1"
             type="password"
             value={form.password}
             onChange={(e) => setForm((s) => ({ ...s, password: e.target.value }))}
             autoComplete="new-password"
           />
           <InlineError text={errors.password} />
-        </label>
+        </Label>
 
-        <label className="block text-sm text-slate-700">
-          Confirm password
-          <input
-            className="mt-1 h-10 w-full rounded-lg border border-slate-300 px-3"
+        <Label>
+          {copy.confirmPassword}
+          <Input
+            className="mt-1"
             type="password"
             value={form.confirmPassword}
             onChange={(e) => setForm((s) => ({ ...s, confirmPassword: e.target.value }))}
             autoComplete="new-password"
           />
           <InlineError text={errors.confirmPassword} />
-        </label>
+        </Label>
 
-        <button type="submit" className="h-10 w-full rounded-lg bg-rose-600 text-white disabled:opacity-60" disabled={loading}>
-          {loading ? "Saving..." : "Save password"}
-        </button>
+        <Button type="submit" className="w-full" disabled={loading || !ready}>
+          {loading ? copy.saving : copy.save}
+        </Button>
 
-        <InlineError text={errors.form || errors.token} />
-        {message ? <p className="text-sm text-emerald-700">{message}</p> : null}
+        <InlineError text={errors.form} />
+        {message ? (
+          <Alert>
+            <AlertDescription>{message}</AlertDescription>
+          </Alert>
+        ) : null}
       </form>
     </AuthShell>
-  );
-}
-
-export default function ResetPasswordPage() {
-  return (
-    <Suspense fallback={<AuthShell title="Reset password" subtitle="Loading..." />}>
-      <ResetPasswordForm />
-    </Suspense>
   );
 }

@@ -1,73 +1,93 @@
-"use client";
+﻿"use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useMemo, useState } from "react";
+import { createClient } from "@/lib/supabase/client";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { useLanguage } from "@/components/language-provider";
 import { AuthShell, InlineError } from "../_components";
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState("");
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
-  const [resetToken, setResetToken] = useState("");
   const [loading, setLoading] = useState(false);
+  const supabase = useMemo(() => createClient(), []);
+  const { lang } = useLanguage();
+
+  const copy =
+    lang === "vi"
+      ? {
+          title: "Quên mật khẩu",
+          subtitle: "Yêu cầu liên kết đặt lại mật khẩu",
+          back: "Quay lại đăng nhập",
+          email: "Email",
+          sending: "Đang gửi...",
+          send: "Gửi liên kết",
+          success: "Nếu email tồn tại, Supabase đã gửi liên kết đặt lại mật khẩu.",
+          connectError: "Không thể kết nối server.",
+        }
+      : {
+          title: "Forgot password",
+          subtitle: "Request a password reset link",
+          back: "Back to sign in",
+          email: "Email",
+          sending: "Sending...",
+          send: "Send link",
+          success: "If the email exists, Supabase has sent a reset link.",
+          connectError: "Cannot connect to server.",
+        };
 
   async function onSubmit(e) {
     e.preventDefault();
     setError("");
     setMessage("");
-    setResetToken("");
     setLoading(true);
 
     try {
-      const response = await fetch("/api/auth/forgot-password", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email }),
+      const { error: resetError } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${window.location.origin}/reset-password`,
       });
 
-      const data = await response.json();
-      if (!response.ok) {
-        setError(data?.error?.message ?? "Unexpected error.");
+      if (resetError) {
+        setError(resetError.message ?? "Unexpected error.");
       } else {
-        setMessage(data?.message ?? "If email exists, reset link was sent.");
-        setResetToken(data?.debug?.resetToken ?? "");
+        setMessage(copy.success);
       }
     } catch {
-      setError("Khong the ket noi server.");
+      setError(copy.connectError);
     } finally {
       setLoading(false);
     }
   }
 
   return (
-    <AuthShell title="Forgot password" subtitle="Request a reset link" footer={<span><Link href="/login" className="text-rose-600">Back to login</Link></span>}>
+    <AuthShell title={copy.title} subtitle={copy.subtitle} footer={<span><Link href="/login" className="text-primary">{copy.back}</Link></span>}>
       <form onSubmit={onSubmit} className="space-y-3" noValidate>
-        <label className="block text-sm text-slate-700">
-          Email
-          <input
-            className="mt-1 h-10 w-full rounded-lg border border-slate-300 px-3"
+        <Label>
+          {copy.email}
+          <Input
+            className="mt-1"
             type="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             autoComplete="email"
           />
-        </label>
+        </Label>
 
-        <button type="submit" className="h-10 w-full rounded-lg bg-rose-600 text-white disabled:opacity-60" disabled={loading}>
-          {loading ? "Sending..." : "Send link"}
-        </button>
+        <Button type="submit" className="w-full" disabled={loading}>
+          {loading ? copy.sending : copy.send}
+        </Button>
 
         <InlineError text={error} />
 
         {message ? (
-          <div className="text-sm text-emerald-700 space-y-1">
-            <p>{message}</p>
-            {resetToken ? (
-              <Link href={`/reset-password?token=${encodeURIComponent(resetToken)}`} className="text-rose-600 underline">
-                Open reset page (debug link)
-              </Link>
-            ) : null}
-          </div>
+          <Alert>
+            <AlertDescription>{message}</AlertDescription>
+          </Alert>
         ) : null}
       </form>
     </AuthShell>

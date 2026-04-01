@@ -3,18 +3,18 @@ import { createClient } from "@/lib/supabase/server";
 import { DashboardContent } from "./dashboard-content";
 
 export default async function DashboardPage() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+    const supabase = await createClient();
+    const {
+        data: { user },
+    } = await supabase.auth.getUser();
 
-  if (!user) {
-    redirect("/login");
-  }
+    if (!user) {
+        redirect("/login");
+    }
 
-  return (
-    <main className="min-h-screen bg-slate-50 p-8">
-      <DashboardContent email={user.email} />
-    </main>
-  );
+    return (
+        <main className="min-h-screen bg-linear-to-br from-rose-50 via-white to-pink-100 p-8">
+            <DashboardContent email={user.email} />
+        </main>
+    );
 }

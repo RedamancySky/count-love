@@ -408,3 +408,109 @@ Lấy tất cả achievements (đã và chưa unlock).
 - `409` Conflict
 - `429` Too Many Requests
 - `500` Internal Server Error
+
+---
+
+## Issue-001 Auth/Onboarding (Implemented in `feature/issue-1`)
+
+The current implementation uses an in-memory auth service for local development and tests.
+
+### Endpoints added/updated
+
+- `POST /auth/register`
+  - Register email/password account.
+  - Returns debug verify token in local scaffold.
+- `POST /auth/resend-verify`
+  - Re-issue verify token when email is not verified.
+- `GET /auth/verify-email?token=...`
+  - Verify email token (24h TTL, single-use).
+- `POST /auth/login`
+  - Email/password sign-in.
+  - Rejects unverified email.
+  - Locks account for 15 minutes after 5 consecutive wrong passwords.
+  - Supports `rememberMe` (30 days).
+- `POST /auth/oauth`
+  - OAuth simulation (`google`, `facebook`) for local scaffold.
+  - Auto-merges with existing email/password account when email matches.
+- `POST /auth/forgot-password`
+  - Issues reset token (1h TTL).
+- `POST /auth/reset-password`
+  - Single-use reset token.
+- `POST /auth/couple/create`
+  - Creates 6-character invite code + QR payload.
+  - Invite expires in 24 hours.
+- `POST /auth/couple/join`
+  - Join with 6-character code or `invitePayload`.
+- `GET /auth/couple/status`
+  - Poll room status (waiting/connected).
+- `PATCH /auth/onboarding`
+  - Saves onboarding progress (steps 1-6).
+
+### Auth/session behavior
+
+- Session cookie: `countlove_session` (HttpOnly).
+- Onboarding status cookie: `countlove_onboarding_completed` (HttpOnly).
+- Middleware redirects:
+  - Unauthenticated users to `/login`.
+  - Authenticated but incomplete onboarding users to `/onboarding` before protected pages.
+
+---
+
+## Supabase Auth Migration (March 28, 2026)
+
+Auth UI is now connected to Supabase Auth directly (`@supabase/supabase-js` + `@supabase/ssr`).
+
+### Active auth flows
+
+- Email/password sign-up: `supabase.auth.signUp`
+- Email/password sign-in: `supabase.auth.signInWithPassword`
+- OAuth sign-in (Google/Facebook): `supabase.auth.signInWithOAuth`
+- Resend verify email: `supabase.auth.resend({ type: "signup" })`
+- Forgot password: `supabase.auth.resetPasswordForEmail`
+- Reset password: `supabase.auth.updateUser({ password })`
+
+### Session handling
+
+- Supabase session cookies are handled by SSR middleware in `middleware.ts`.
+- Protected routes:
+  - `/dashboard/*`
+  - `/album/*`
+  - `/diary/*`
+  - `/chat/*`
+  - `/calendar/*`
+  - `/games/*`
+  - `/settings/*`
+
+### Utility routes
+
+- `GET /api/health/supabase`
+  - Verifies Supabase env wiring and optional admin check when `SUPABASE_SERVICE_ROLE_KEY` is configured.
+
+### Supabase-backed onboarding endpoints
+
+- `POST /api/auth/couple/create`
+  - Creates a real `couples` row in Supabase with 6-char invite code.
+- `POST /api/auth/couple/join`
+  - Joins existing couple by code/payload and activates the room.
+- `GET /api/auth/couple/status`
+  - Reads partner-join status from Supabase.
+- `PATCH /api/auth/onboarding`
+  - Persists onboarding profile/couple settings into Supabase tables.
+
+### Supabase-backed auth endpoints
+
+- `POST /api/auth/register`
+  - Uses Supabase `signUp`.
+- `POST /api/auth/login`
+  - Uses Supabase `signInWithPassword`.
+- `POST /api/auth/forgot-password`
+  - Uses Supabase `resetPasswordForEmail`.
+- `POST /api/auth/reset-password`
+  - Uses Supabase `updateUser({ password })` with recovery session.
+- `GET /api/auth/verify-email`
+  - Uses Supabase `verifyOtp` with `token_hash` + `type`.
+- `POST /api/auth/resend-verify`
+  - Uses Supabase `resend({ type: "signup" })`.
+- `POST /api/auth/oauth`
+  - Returns OAuth provider URL from Supabase (`skipBrowserRedirect: true`).
+

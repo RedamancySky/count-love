@@ -529,3 +529,65 @@ CREATE INDEX idx_events_couple_date ON events(couple_id, date ASC);
 -- Notifications chưa đọc
 CREATE INDEX idx_notifications_user_unread ON notifications(user_id, is_read, created_at DESC);
 ```
+
+---
+
+## Issue-001 Local Auth Data Model (In-memory Scaffold)
+
+For local-first implementation in `feature/issue-1`, auth/onboarding state is persisted in-memory (`lib/auth/store.js`) with these collections:
+
+- `users` (`Map<userId, user>`)
+  - `id`, `name`, `email`, `passwordHash?`, `emailVerified?`
+  - `failedAttempts`, `lockUntil`
+  - `onboardingStep`, `onboardingCompleted`
+  - `coupleId?`, `nickname?`, `birthDate?`, `bio?`, `avatar?`
+  - `oauthProviders[]`
+- `usersByEmail` (`Map<email, userId>`)
+- `oauthAccounts` (`Map<provider:providerAccountId, userId>`)
+- `verifyTokens` (`Map<token, { userId, expiresAt, used }>`)
+- `resetTokens` (`Map<token, { userId, expiresAt, used }>`)
+- `couplesById` (`Map<coupleId, couple>`)
+- `couplesByCode` (`Map<6-char-code, coupleId>`)
+- `sessionsByToken` (`Map<sessionToken, { userId, expiresAt }>`)
+
+### Couple room contract
+
+- Room code is uppercase alphanumeric, fixed length 6.
+- Room invite expires in 24h.
+- `qrCodePayload` format: `countlove://couple/join?code=ABC123`.
+
+### Security rules implemented
+
+- Email/password login blocked until email is verified.
+- Account lock after 5 consecutive wrong passwords (15 minutes).
+- Password reset token expires in 1 hour and is single-use.
+
+---
+
+## Supabase Connection Notes (March 28, 2026)
+
+Project now uses Supabase Auth as the primary authentication provider.
+
+### Required environment variables
+
+- `NEXT_PUBLIC_SUPABASE_URL`
+- `NEXT_PUBLIC_SUPABASE_ANON_KEY` (or `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY`)
+- `SUPABASE_SERVICE_ROLE_KEY` (server-only, for admin/diagnostic operations)
+
+### Health-check endpoint
+
+- `GET /api/health/supabase`
+  - Confirms env wiring.
+  - Runs `auth.admin.listUsers` only when `SUPABASE_SERVICE_ROLE_KEY` is available.
+
+### Supabase migration file
+
+- Initial SQL schema is now provided at:
+  - `supabase/migrations/20260328_000001_init_countlove.sql`
+- This migration includes:
+  - `profiles` bound to `auth.users`
+  - `couples`, onboarding-related columns
+  - Core domain tables (albums, media, diary, messages, events, bucket, achievements, challenges, scores, notifications)
+  - Indexes and updated_at triggers
+  - RLS starter policies for `profiles` and `couples`
+
